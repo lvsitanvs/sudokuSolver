@@ -532,7 +532,7 @@ if __name__ == "__main__":
     s = Sudoku()
     # s.load("puzzle_mild.txt")
     s.load("puzzle.txt")
-    print("Starting conputation.....")
+    print("Starting computation.....")
     solution = s.solve()
     # if solution:
     #    s.save("solution.txt", solution)
