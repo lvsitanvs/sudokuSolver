@@ -1,5 +1,6 @@
 import numpy as np
 import copy
+import time
 from random import sample, randint
 
 
@@ -19,7 +20,7 @@ class Sudoku(object):
         return self.puzzle
 
     # Swap in blocks and score rows,columns
-    def solve(self, max_iterations=5000000, T=0.5, cooling_rate=1.0 - 1e-5, verbose=True):
+    def solve(self, values=None, max_iterations=5000000, T=0.5, cooling_rate=1.0 - 1e-5, verbose=True):
         """
         Solves sudoku using simulated annealing. Ref(https://en.wikipedia.org/wiki/Simulated_annealing)
         Method:
@@ -47,12 +48,17 @@ class Sudoku(object):
         """
         self.max_iterations = max_iterations
 
+        if values is not None:
+            self.puzzle = values
+
+
         if verbose:
             print("Puzzle")
             print_grid(self.puzzle)
 
         reheat_rate = T / 0.3
 
+        start_time = time.time()
         puzzle = copy.deepcopy(self.puzzle)
         side = len(puzzle)
         sq_size = int(np.sqrt(side))
@@ -112,7 +118,9 @@ class Sudoku(object):
             T = cooling_rate * T
 
         if verbose:
+            end_time = time.time()
             print("\nSolved at iteraction:", i + 1, "with a temperature of", T, "\n")
+            print("Time taken: %f seconds" % (end_time - start_time))
             # Print solution
             print("Solution:")
             print_grid(puzzle)

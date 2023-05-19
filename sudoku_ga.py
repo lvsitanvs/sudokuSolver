@@ -378,12 +378,11 @@ class Sudoku(object):
             numpy.savetxt(f, solution.values.reshape(numDigits * numDigits), fmt='%d')
         return
 
-    def solve(self, values):
-        self.given = Given(values)  # new
+    def solve(self):
         start_time = time.time()
         num_candidates = 1000  # Number of candidates (i.e. population size).
         num_elites = int(0.05 * num_candidates)  # Number of elites.
-        num_generations = 10000  # Number of generations.
+        num_generations = 1000  # Number of generations.
         num_mutations = 0  # Number of mutations.
 
         # Mutation parameters.
