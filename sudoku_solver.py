@@ -1,16 +1,19 @@
 import string
 import random
 import numpy
+import multiprocessing
+import matplotlib.pyplot as plt
 import annealing_sudoku_solve as sa
 import genetic_algo_sudoku_solver as ga
 
-
 num_digits = 9
+
+
 def load(path):
     """Load a configuration to solve."""
     print("\nUnsolved Sudoku puzzle:")
     with open(path, "r") as file:
-        lines = file.readlines()    # A list containing all the lines (100)
+        lines = file.readlines()  # A list containing all the lines (100)
 
         # Choose random line between 0 and 99
         line = lines[random.randint(0, 99)]
@@ -22,6 +25,7 @@ def load(path):
         values = numpy.fromstring(f, dtype=int, sep=' ').reshape((num_digits, num_digits)).astype(int)
 
     return values
+
 
 def format_line(line):
     f = ''
@@ -51,31 +55,56 @@ def print_grid(values):
                 print("%d " % values[i, j], end='')
     print()
 
+
+def plot_graph(x, y, title, x_label, y_label):
+    plt.plot(x, y)
+    plt.title(title)
+    plt.xlabel(x_label)
+    plt.ylabel(y_label)
+    plt.show()
+
+
+def genetic_algo(unsolved):
+    sudoku = ga.Sudoku()
+    puzzle, x, y = sudoku.solve(unsolved)  # puzzle = solved puzzle, x = generations, y = fitness
+
+    print_grid(puzzle)
+    plot_graph(x, y, 'Genetic Algorithm', 'Generations', 'Fitness')
+
+
+def simulated_annealing(unsolved):
+    sudoku = sa.Sudoku()
+    puzzle, x, y = sudoku.solve(unsolved)  # x = iterations, y = scores, puzzle = solved puzzle
+
+    print_grid(puzzle)
+    plot_graph(x, y, 'Simulated Annealing', 'Iterations', 'Scores')
+
+
 def main():
+    pool = multiprocessing.Pool(processes=2)
     difficulty = 'qwerty'  # level difficulty of the puzzle
-    algo = 'qwerty'  # algorithm to use
     filename = 'puzzles/'
-    print(' --- Sudoku Solver --- ')
+
+    print('\n --- Sudoku Solver --- \n')
 
     # User can choose the difficulty level and algorithm
-    while difficulty not in string.digits and len(difficulty) > 1:
-        difficulty = input("Difficulty a number between 0 - 8 (easy - hard): ")
+    while difficulty not in string.digits or len(difficulty) > 1:
+        difficulty = input("Difficulty a number between 0 - 7 (easy - hard): ")
 
-    while algo not in string.digits[1:3]:
-        algo = input("Algorithm (1 - Simulated Annealing or 2 - Genetic Algoithm): ")
-
-    #difficulty = str(int(difficulty) - 1)
     filename += difficulty
     unsolved = load(filename)
     print_grid(unsolved)
 
-    if algo == '1':
-        sudoku = sa.Sudoku()
-        sudoku.solve(unsolved)
-    else:
-        sudoku = ga.Sudoku()
-        sudoku.solve(unsolved)
+    # ploting a graph blocks the program (the main thread), so we use multiprocessing
+    # each algorithm is executed in a different process
+    pool.apply_async(simulated_annealing, (unsolved,))
+    pool.apply_async(genetic_algo, (unsolved,))
+
+    # don't close the program
+    while True:
+        pass
 
 
+# to run the program automatically
 if __name__ == '__main__':
     main()

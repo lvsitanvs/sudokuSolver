@@ -12,15 +12,8 @@ class Sudoku(object):
         self.max_iterations = 0
         return
 
-    def load(self, path):
-        # Load a configuration to solve.
-        print("Unsolved Sudoku puzzle:")
-        with open(path, "r") as f:
-            self.puzzle = np.loadtxt(f).reshape((9, 9)).astype(int)
-        return self.puzzle
-
     # Swap in blocks and score rows,columns
-    def solve(self, values=None, max_iterations=5000000, T=0.5, cooling_rate=1.0 - 1e-5, verbose=True):
+    def solve(self, values=None, max_iterations=5000000, T=0.5, cooling_rate=1.0 - 1e-5):
         """
         Solves sudoku using simulated annealing. Ref(https://en.wikipedia.org/wiki/Simulated_annealing)
         Method:
@@ -41,20 +34,19 @@ class Sudoku(object):
           maxIterations   : (Optional) The number fo iterations to try before giving up (int)
           T               : (Optional) The temperature (double)
           coolingRate     : (Optional) The rate at which to reduce the temperature. The temperature is reduced geometrically. (double)
-          verbose         : (Optional) Whether to print info (Boolean)
 
          Output:
           Returns solved puzzle
         """
+        print("Simulated Annealing")
+        # x and y for plotting ---------------------------------
+        x = []  # Iterations
+        y = []  # Scores
+        # -------------------------------------------------------
         self.max_iterations = max_iterations
 
         if values is not None:
             self.puzzle = values
-
-
-        if verbose:
-            print("Puzzle")
-            print_grid(self.puzzle)
 
         reheat_rate = T / 0.3
 
@@ -65,10 +57,6 @@ class Sudoku(object):
 
         empty_cells = self.initialize(puzzle)
 
-        if verbose:
-            print("Initialized puzzle")
-            print_grid(puzzle)
-
         # Start annealing
         score = self.calc_score()
         best_score = score
@@ -77,10 +65,14 @@ class Sudoku(object):
         idx_rem = 10
         decimal = 0
         for i in range(self.max_iterations):
+            x.append(i)
+            y.append(score)
+
             # Print iteraction at exponential indexes (i.e., 10, 100, 1000, 10000...)
-            if i % idx_rem == 0 and verbose:
-                print("Iteration " + str(i) + ", current score:" + str(score) + "  Best score: " + str(
-                    best_score) + "  Temperature:  ", T)
+            if i % idx_rem == 0:
+                # To DEBUG, uncoment the line below
+                # print("Iteration " + str(i) + ", current score:" + str(score) + "  Best score: " + str(best_score) + "  Temperature:  ", T)
+                print('.', end='', flush=True)  # print a dot for each generation, just to see the script is running :)
                 decimal += 1
 
             if decimal > 9:
@@ -93,20 +85,21 @@ class Sudoku(object):
 
             # If stuck then reheat the annealer
             if stuck_count > 5000 or T < 1e-4:
-                print("Annealer is stuck at T={} and stuck_count={}, so re-initializing...".format(T, stuck_count))
+                # To DEBUG, uncoment the line below
+                # print("Annealer is stuck at T={} and stuck_count={}, so re-initializing...".format(T, stuck_count))
                 T = T * reheat_rate
                 puzzle = copy.deepcopy(self.puzzle)
                 empty_cells = self.initialize(puzzle)
                 stuck_count = 0
 
-            neighbor_puzzle = self.find_neighbor(puzzle, empty_cells)   # Find neighbouring state
-            s2 = self.calc_score(neighbor_puzzle)                       # Energy of neighbouring state
-            delta_s = float(score - s2)                                 # Energy difference
-            probability = np.exp(delta_s / T)                           # Acceptance probability
+            neighbor_puzzle = self.find_neighbor(puzzle, empty_cells)  # Find neighbouring state
+            s2 = self.calc_score(neighbor_puzzle)  # Energy of neighbouring state
+            delta_s = float(score - s2)  # Energy difference
+            probability = np.exp(delta_s / T)  # Acceptance probability
 
             random_probability = np.random.uniform(low=0, high=1, size=1)
 
-            if probability > random_probability:                        # Acceptance condition, accept-reject sampling
+            if probability > random_probability:  # Acceptance condition, accept-reject sampling
                 puzzle = copy.deepcopy(neighbor_puzzle)
                 score = s2
                 if score < best_score:
@@ -117,15 +110,11 @@ class Sudoku(object):
 
             T = cooling_rate * T
 
-        if verbose:
-            end_time = time.time()
-            print("\nSolved at iteraction:", i + 1, "with a temperature of", T, "\n")
-            print("Time taken: %f seconds" % (end_time - start_time))
-            # Print solution
-            print("Solution:")
-            print_grid(puzzle)
+        end_time = time.time()
+        print("\nNum iteractions:", i + 1, "with a temperature of", T)
+        print("Time taken: %f seconds" % (end_time - start_time))
 
-        return puzzle
+        return puzzle, x, y
 
     def calc_score(self, puzzle=None):
         """
@@ -261,38 +250,3 @@ class Sudoku(object):
             new_puzzle[cell1[0]][cell1[1]]
 
         return new_puzzle
-
-
-# Print grid
-def print_grid(puzzle):
-    """
-    Print a grid
-
-    Input:
-     puzzle: The grid to be printed
-
-    Output:
-     Returns nothing, but prints the puzzle
-    """
-    print()
-    for i in range(0, 9):
-        if i % 3 == 0 and i != 0:
-            print("------+-------+------")
-        for j in range(0, 9):
-            if j % 3 == 0 and j != 0:
-                print("| ", end='')
-            if j == 9 - 1 and puzzle[i, j] == 0:
-                print(". ")
-            elif j == 9 - 1 and puzzle[i, j] != 0:
-                print("%d" % puzzle[i, j])
-            elif puzzle[i, j] == 0:
-                print(". ", end='')
-            else:
-                print("%d " % puzzle[i, j], end='')
-    print()
-
-
-if __name__ == "__main__":
-    s = Sudoku()
-    values = s.load('puzzle.txt')
-    s.solve()

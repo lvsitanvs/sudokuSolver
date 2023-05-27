@@ -17,7 +17,9 @@ class Population(object):
         self.candidates = []
         return
 
-    def seed(self, num_candidates, given):
+    def seed(self, num_candidates, given, repopulate=False):
+        """ Seed a new population of candidate solutions. """
+
         self.candidates = []
 
         # Determine the legal values that each square can take.
@@ -66,7 +68,11 @@ class Population(object):
         # Compute the fitness of all candidates in the population.
         self.update_fitness()
 
-        print("Seeding complete.")
+        if repopulate:
+            print(f"Population repopulated with {len(self.candidates)} candidates.")
+        else:
+            print("Genetic algorithm")
+            print(f"Population of {len(self.candidates)} created.")
 
         return
 
@@ -363,22 +369,9 @@ class Sudoku(object):
         self.given = None
         return
 
-    def load(self, path):
-        # Load a configuration to solve.
-        print("Unsolved Sudoku puzzle:")
-        with open(path, "r") as f:
-            values = numpy.loadtxt(f).reshape((numDigits, numDigits)).astype(int)
-            self.given = Given(values)
-            print_grid(self.given.values)
-        return
-
-    def save(self, path, solution):
-        # Save a configuration to a file.
-        with open(path, "w") as f:
-            numpy.savetxt(f, solution.values.reshape(numDigits * numDigits), fmt='%d')
-        return
-
     def solve(self, values):
+        x = []  # generations
+        y = []  # fitness
         self.given = Given(values)  # new
         start_time = time.time()
         num_candidates = 1000  # Number of candidates (i.e. population size).
@@ -397,8 +390,10 @@ class Sudoku(object):
         # For up to 10000 generations...
         stale = 0
         for generation in range(0, num_generations):
+            x.append(generation)
 
-            print("Generation %d" % generation)
+            # to DEBUG uncomment the following line
+            #print("Generation %d" % generation)
 
             # Check for a solution.
             best_fitness = 0.0
@@ -406,16 +401,20 @@ class Sudoku(object):
                 fitness = self.population.candidates[c].fitness
                 if fitness == 1.0:
                     end_time = time.time()
-                    print("Solution found at generation %d!" % generation)
+                    print(f"\nNumber of generations: {generation}")
                     print("Time taken: %f seconds" % (end_time - start_time))
-                    print_grid(self.population.candidates[c].values)
-                    return self.population.candidates[c]
+                    solved = self.population.candidates[c].values
+                    y.append(fitness)
+                    return solved, x, y
 
                 # Find the best fitness.
                 if fitness > best_fitness:
                     best_fitness = fitness
 
-            print("Best fitness: %f" % best_fitness)
+            # to DEBUG uncomment the following line
+            #print("Best fitness: %f" % best_fitness)
+            print('.', end='', flush=True)  # print a dot for each generation, just to see the script is running :)
+            y.append(best_fitness)
 
             # Create the next population.
             next_population = []
@@ -497,8 +496,8 @@ class Sudoku(object):
             # Re-seed the population if 100 generations have passed with the fittest two candidates always having the
             # same fitness.
             if stale >= 100:
-                print("The population has gone stale. Re-seeding...")
-                self.population.seed(num_candidates, self.given)
+                print("\nThe population has gone stale. Re-seeding...")
+                self.population.seed(num_candidates, self.given, repopulate=True)
                 stale = 0
                 sigma = 1
                 phi = 0
@@ -506,34 +505,4 @@ class Sudoku(object):
                 mutation_rate = 0.06
 
         print("No solution found.")
-        return None
-
-
-def print_grid(values):
-    print()
-    for i in range(0, numDigits):
-        if i % 3 == 0 and i != 0:
-            print("------+-------+------")
-        for j in range(0, numDigits):
-            if j % 3 == 0 and j != 0:
-                print("| ", end='')
-            if j == numDigits - 1 and values[i, j] == 0:
-                print(". ")
-            elif j == numDigits - 1 and values[i, j] != 0:
-                print("%d" % values[i, j])
-            elif values[i, j] == 0:
-                print(". ", end='')
-            else:
-                print("%d " % values[i, j], end='')
-    print()
-
-
-if __name__ == "__main__":
-    print("Sudoku solver using a genetic algorithm.")
-    s = Sudoku()
-    # s.load("puzzle_mild.txt")
-    s.load("puzzle.txt")
-    print("Starting computation.....")
-    solution = s.solve()
-    # if solution:
-    #    s.save("solution.txt", solution)
+        return self.given, x, y
