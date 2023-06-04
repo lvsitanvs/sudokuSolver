@@ -28,12 +28,7 @@ def load(path):
 
 
 def format_line(line):
-    f = ''
-    for c in line:
-        if c == '.':
-            f += '0 '
-        else:
-            f += c + ' '
+    f = ''.join('0 ' if c == '.' else f'{c} ' for c in line)
     return f[:-1]
 
 
@@ -47,7 +42,7 @@ def print_grid(values):
                 print("| ", end='')
             if j == num_digits - 1 and values[i, j] == 0:
                 print(". ")
-            elif j == num_digits - 1 and values[i, j] != 0:
+            elif j == num_digits - 1:
                 print("%d" % values[i, j])
             elif values[i, j] == 0:
                 print(". ", end='')

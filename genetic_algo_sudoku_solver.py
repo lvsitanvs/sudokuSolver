@@ -29,7 +29,7 @@ class Population(object):
             for column in range(0, numDigits):
                 for value in range(1, 10):
                     if (given.values[row][column] == 0) and not \
-                            (given.is_column_duplicate(column, value) or
+                                (given.is_column_duplicate(column, value) or
                              given.is_block_duplicate(row, column, value) or
                              given.is_row_duplicate(row, value)):
                         # Value is available.
@@ -39,8 +39,8 @@ class Population(object):
                         helper.values[row][column].append(given.values[row][column])
                         break
 
-        # Seed a new population.       
-        for p in range(0, num_candidates):
+        # Seed a new population.
+        for _ in range(0, num_candidates):
             g = Candidate()
             for i in range(0, numDigits):  # New row in candidate.
                 row = numpy.zeros(numDigits)
@@ -49,12 +49,13 @@ class Population(object):
                 for j in range(0, numDigits):  # New column j value in row i.
 
                     # If value is already given, don't change it.
-                    if given.values[i][j] != 0:
-                        row[j] = given.values[i][j]
-                    # Fill in the gaps using the helper board.
-                    elif given.values[i][j] == 0:
-                        row[j] = helper.values[i][j][random.randint(0, len(helper.values[i][j]) - 1)]
-
+                    row[j] = (
+                        given.values[i][j]
+                        if given.values[i][j] != 0
+                        else helper.values[i][j][
+                            random.randint(0, len(helper.values[i][j]) - 1)
+                        ]
+                    )
                 # If we don't have a valid board, then try again. There must be no duplicates in the row.
                 while len(list(set(row))) != numDigits:
                     for j in range(0, numDigits):
@@ -196,35 +197,28 @@ class Given(Candidate):
 
     def is_row_duplicate(self, row, value):
         """ Check whether there is a duplicate of a fixed/given value in a row. """
-        for column in range(0, numDigits):
-            if self.values[row][column] == value:
-                return True
-        return False
+        return any(self.values[row][column] == value for column in range(0, numDigits))
 
     def is_column_duplicate(self, column, value):
         """ Check whether there is a duplicate of a fixed/given value in a column. """
-        for row in range(0, numDigits):
-            if self.values[row][column] == value:
-                return True
-        return False
+        return any(self.values[row][column] == value for row in range(0, numDigits))
 
     def is_block_duplicate(self, row, column, value):
         """ Check whether there is a duplicate of a fixed/given value in a 3 x 3 block. """
         i = 3 * (int(row / 3))
         j = 3 * (int(column / 3))
 
-        if ((self.values[i][j] == value)
-                or (self.values[i][j + 1] == value)
-                or (self.values[i][j + 2] == value)
-                or (self.values[i + 1][j] == value)
-                or (self.values[i + 1][j + 1] == value)
-                or (self.values[i + 1][j + 2] == value)
-                or (self.values[i + 2][j] == value)
-                or (self.values[i + 2][j + 1] == value)
-                or (self.values[i + 2][j + 2] == value)):
-            return True
-        else:
-            return False
+        return (
+            self.values[i][j] == value
+            or self.values[i][j + 1] == value
+            or self.values[i][j + 2] == value
+            or self.values[i + 1][j] == value
+            or self.values[i + 1][j + 1] == value
+            or self.values[i + 1][j + 2] == value
+            or self.values[i + 2][j] == value
+            or self.values[i + 2][j + 1] == value
+            or self.values[i + 2][j + 2] == value
+        )
 
 
 class Tournament(object):
@@ -258,10 +252,7 @@ class Tournament(object):
         r = random.uniform(0, 1.1)
         while r > 1:  # Outside [0, 1] boundary. Choose another.
             r = random.uniform(0, 1.1)
-        if r < selection_rate:
-            return fittest
-        else:
-            return weakest
+        return fittest if r < selection_rate else weakest
 
 
 class CycleCrossover(object):
@@ -295,10 +286,7 @@ class CycleCrossover(object):
                 crossover_point2 = random.randint(1, 9)
 
             if crossover_point1 > crossover_point2:
-                temp = crossover_point1
-                crossover_point1 = crossover_point2
-                crossover_point2 = temp
-
+                crossover_point1, crossover_point2 = crossover_point2, crossover_point1
             for i in range(crossover_point1, crossover_point2):
                 child1.values[i], child2.values[i] = self.crossover_rows(child1.values[i], child2.values[i])
 
@@ -309,15 +297,15 @@ class CycleCrossover(object):
         child_row2 = numpy.zeros(numDigits)
 
         # remaining = range(1, Nd+1)
-        remaining = [x for x in range(1, numDigits + 1)]  # Python 3. Modified by Ven
+        remaining = list(range(1, numDigits + 1))
         cycle = 0
 
         while (0 in child_row1) and (0 in child_row2):  # While child rows not complete...
+            # Assign next unused value.
+            index = self.find_unused(row1, remaining)
+            start = row1[index]
+            remaining.remove(row1[index])
             if cycle % 2 == 0:  # Even cycles.
-                # Assign next unused value.
-                index = self.find_unused(row1, remaining)
-                start = row1[index]
-                remaining.remove(row1[index])
                 child_row1[index] = row1[index]
                 child_row2[index] = row2[index]
                 next = row2[index]
@@ -329,12 +317,7 @@ class CycleCrossover(object):
                     child_row2[index] = row2[index]
                     next = row2[index]
 
-                cycle += 1
-
             else:  # Odd cycle - flip values.
-                index = self.find_unused(row1, remaining)
-                start = row1[index]
-                remaining.remove(row1[index])
                 child_row1[index] = row2[index]
                 child_row2[index] = row1[index]
                 next = row2[index]
@@ -346,7 +329,7 @@ class CycleCrossover(object):
                     child_row2[index] = row1[index]
                     next = row2[index]
 
-                cycle += 1
+            cycle += 1
 
         return child_row1, child_row2
 
@@ -428,7 +411,7 @@ class Sudoku(object):
                 elites.append(elite)
 
             # Create the rest of the candidates.
-            for count in range(num_elites, num_candidates, 2):
+            for _ in range(num_elites, num_candidates, 2):
                 # Select parents from population via a tournament.
                 t = Tournament()
                 parent1 = t.compete(self.population.candidates)
@@ -458,25 +441,16 @@ class Sudoku(object):
                     if child2.fitness > old_fitness:  # Used to calculate the relative success rate of mutations.
                         phi = phi + 1
 
-                # Add children to new population.
-                next_population.append(child1)
-                next_population.append(child2)
-
+                next_population.extend((child1, child2))
             # Append elites onto the end of the population. These will not have been affected by crossover or mutation.
-            for e in range(0, num_elites):
-                next_population.append(elites[e])
-
+            next_population.extend(elites[e] for e in range(0, num_elites))
             # Select next generation.
             self.population.candidates = next_population
             self.population.update_fitness()
 
             # Calculate new adaptive mutation rate (based on Rechenberg's 1/5 success rule).
             # This is to stop too much mutation as the fitness progresses towards unity.
-            if num_mutations == 0:
-                phi = 0  # Avoid divide by zero.
-            else:
-                phi = phi / num_mutations
-
+            phi = 0 if num_mutations == 0 else phi / num_mutations
             if phi > 0.2:
                 sigma = sigma / 0.998
             elif phi < 0.2:
