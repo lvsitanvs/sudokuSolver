@@ -212,7 +212,7 @@ class Sudoku(object):
                 i -= sq_size
                 square = []
                 if j % side == 0:
-                    i = i + sq_size
+                    i += sq_size
                     j = 0
 
             i += 1
